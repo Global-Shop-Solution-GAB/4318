@@ -1,0 +1,333 @@
+Program.Sub.ScreenSU.Start
+Gui.PrintLabels..Create
+Gui.PrintLabels..Caption("Print Labels")
+Gui.PrintLabels..Size(12885,6315)
+Gui.PrintLabels..MinX(0)
+Gui.PrintLabels..MinY(0)
+Gui.PrintLabels..Position(0,0)
+Gui.PrintLabels..BackColor(-2147483633)
+Gui.PrintLabels..ControlBox(True)
+Gui.PrintLabels..MaxButton(False)
+Gui.PrintLabels..MousePointer(0)
+Gui.PrintLabels..Event(UnLoad,PrintLabels_UnLoad)
+Gui.PrintLabels..MinButton(False)
+Gui.PrintLabels.GsGridControl_Lbls.Create(GsGridControl)
+Gui.PrintLabels.GsGridControl_Lbls.Size(12345,4770)
+Gui.PrintLabels.GsGridControl_Lbls.Position(165,360)
+Gui.PrintLabels.cmdPrint.Create(Button)
+Gui.PrintLabels.cmdPrint.Size(855,375)
+Gui.PrintLabels.cmdPrint.Position(195,5265)
+Gui.PrintLabels.cmdPrint.Caption("&Print")
+Gui.PrintLabels.cmdPrint.Event(Click,cmdPrint_Click)
+Program.Sub.ScreenSU.End
+
+
+Program.Sub.Preflight.Start
+
+Variable.UDT.uPKLabel.Define("Part",String)
+Variable.UDT.uPKLabel.Define("PartDesc",String)
+Variable.UDT.uPKLabel.Define("PO",String)
+Variable.UDT.uPKLabel.Define("CustName",String)
+Variable.UDT.uPKLabel.Define("Qty",Long)
+Variable.UDT.uPKLabel.Define("LOT",String)
+Variable.UDT.uPKLabel.Define("Dateship",Date)
+Variable.UDT.uPKLabel.Define("PKlstno",String)
+Variable.UDT.uPKLabel.Define("WO",String)
+Variable.UDT.uPKLabel.Define("Heat",String)
+
+'modified by Josh Withrow 2017-02-14 - added UM_INVENTORY to uPKLabel
+Variable.UDT.uPKLabel.Define("UM_Inventory",String)
+
+Variable.uGlobal.uPKLabel.Declare("uPKLabel")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+f.Intrinsic.Control.If(v.Caller.Hook,=,38401)
+	Variable.Passed.000095.Set("Staging Lbls")
+f.Intrinsic.Control.elseIf(v.Caller.Hook,=,38404)
+	F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	f.Intrinsic.Control.CallSub(show_printscreen)
+f.Intrinsic.Control.EndIf 
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4318_StagingLabels.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.cmdPrint_Click.Start
+F.Intrinsic.Control.SetErrorHandler("PrintLbls_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sSql.Declare(String)
+V.local.iBIRunID.Declare(long)
+V.local.iBILogID.Declare(long)
+V.Local.iRptid.Declare(long)
+v.Local.iFor.Declare(long)
+v.Local.j.Declare(long)
+v.Local.lQty.Declare(long)
+V.Local.sWO.Declare(String)
+V.Local.iRet.Declare(long)
+V.Local.bEnt.Declare(boolean)
+
+'create UDT
+
+
+V.uGlobal.uPKLabel.Redim(-1,-1)
+
+F.Intrinsic.UI.InvokeWaitDialog("Printing Labels")
+
+F.Global.BI.GetIDFromName("GCG_4318_StagingLabels.lab",V.Local.iRptid)
+F.Global.BI.GetRunID(V.Local.iBIRunID)
+
+F.Global.BI.StartLogging(V.Local.iBIRunID,V.Local.iRptid,0,"",V.Local.iBILogID)
+
+
+F.Intrinsic.Control.For(v.Local.iFor,0,v.dataTable.DTBOL.RowCount--,1)
+	v.Local.lQty.Set(v.datatable.DTBOL(v.Local.iFor).Print.fieldval)
+	f.Intrinsic.Control.If(v.datatable.DTBOL(v.Local.iFor).Select.fieldval,=,True)
+		f.Intrinsic.Control.DoUntil(v.Local.lQty,=,0)
+			f.Intrinsic.Control.If(V.uGlobal.uPKLabel.UBound,=,-1)
+				V.uGlobal.uPKLabel.Redim(0,0)
+				V.Local.bEnt.Set(True)
+			f.Intrinsic.Control.Else
+				f.Intrinsic.Math.Add(v.Local.j,1,v.Local.j)
+				V.uGlobal.uPKLabel.RedimPreserve(0,v.Local.j)
+			f.Intrinsic.Control.EndIf 
+			V.uGlobal.uPKLabel(v.Local.j)!Part.Set(v.datatable.DTBOL(v.Local.iFor).Part.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!PartDesc.Set(v.datatable.DTBOL(v.Local.iFor).part_desc.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!PO.Set(v.datatable.DTBOL(v.Local.iFor).Customer_PO.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!CustName.Set(v.datatable.DTBOL(v.Local.iFor).Name_Customer_Ship.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!Qty.Set(v.datatable.DTBOL(v.Local.iFor).Qty.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!LOT.Set(v.datatable.DTBOL(v.Local.iFor).lot.fieldval)
+			
+			'added by Josh Withrow 2017-02-14 - added INVENTORY_MSTR.UM_INVENTORY to uPKLabel
+			V.uGlobal.uPKLabel(v.Local.j)!UM_Inventory.Set(v.datatable.DTBOL(v.Local.iFor).UM_Inventory.fieldval)
+			
+			V.uGlobal.uPKLabel(v.Local.j)!Dateship.Set(v.datatable.DTBOL(v.Local.iFor).Date_shipped.fieldval)
+
+			f.Intrinsic.String.Build("{0}-{1}",v.datatable.DTBOL(v.Local.iFor).Job.fieldval,v.datatable.DTBOL(v.Local.iFor).Suffix.fieldval,V.Local.sWO)
+			V.uGlobal.uPKLabel(v.Local.j)!WO.Set(V.Local.sWO)
+			V.uGlobal.uPKLabel(v.Local.j)!Heat.Set(v.datatable.DTBOL(v.Local.iFor).Heat.fieldval)
+			V.uGlobal.uPKLabel(v.Local.j)!PKlstno.Set(v.datatable.DTBOL(v.Local.iFor).pck_no.fieldval)
+
+			f.Intrinsic.Math.sub(v.Local.lQty,1,v.Local.lQty)
+		f.Intrinsic.Control.Loop
+
+		f.Intrinsic.Control.If(V.Local.bEnt,=,True)
+		f.Intrinsic.Control.andIf(v.datatable.DTBOL(v.Local.iFor).PRINTED.fieldval,<>,True)
+			f.Intrinsic.String.Build("Insert into GCG_4318_Staginglbls values('{0}','{1}','{2}')",v.datatable.DTBOL(v.Local.iFor).pck_no.fieldval,v.datatable.DTBOL(v.Local.iFor).order_no.fieldval,v.datatable.DTBOL(v.Local.iFor).order_line.fieldval,V.Local.sSql)
+			f.ODBC.Connection!con.Execute(V.Local.sSql)
+		f.Intrinsic.Control.EndIf 
+	f.Intrinsic.Control.EndIf 
+f.Intrinsic.Control.Next(v.Local.iFor)
+
+
+'Stopping Logging
+F.Global.BI.StopLogging(V.local.iBILogID)
+F.Intrinsic.Control.If(V.uGlobal.uPKLabel.UBound,>,-1)
+        'Printing Codesoft label
+        F.Global.BI.PrintCodesoftLabelFromUDT(V.local.iBIRunID,V.local.iBILogID,"uGlobal.uPKLabel","","",True)
+
+		F.Intrinsic.UI.Msgbox("Did the Labels print correctly?","confirm",4,V.Local.iRet)
+		F.Intrinsic.Control.if(V.Local.iRet,=,6)
+			f.Intrinsic.Control.CallSub(printlabels_unload)
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.UI.CloseWaitDialog
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("PrintLbls_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4318_StagingLabels.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.UI.CloseWaitDialog
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdPrint_Click.End
+
+Program.Sub.Show_PrintScreen.Start
+F.Intrinsic.Control.SetErrorHandler("PrintLbls_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sSql.Declare(String)
+V.Local.sPKLno.Declare(String)
+
+
+'PKLST
+'Variable.Passed.000006
+
+
+f.Intrinsic.String.LPad(Variable.Passed.000006,"0",7,V.Local.sPKLno)
+
+'modified by Josh Withrow 2017-02-14 - added INVENTORY_MSTR.UM_INVENTORY to query
+'V.Local.sSql.set("select distinct CONVERT('',SQL_BIT) as 'Select',CONVERT(CASE WHEN GCG.order_no = '' THEN 0 WHEN GCG.order_no <> '' THEN 1 END,SQL_BIT) AS PRINTED,' ' as 'Print' ,order_no,order_line,part,part_desc,locn,lot,bin,Qty, SHPHDR.Customer_PO,BOL.Heat,ITMHIS.Job,ITMHIS.Suffix,SHPTO.Name_Customer_Ship,SHPHDR.Date_shipped,BOL.pck_no from ")
+V.Local.sSql.set("select distinct CONVERT('',SQL_BIT) as 'Select',CONVERT(CASE WHEN GCG.order_no = '' THEN 0 WHEN GCG.order_no <> '' THEN 1 END,SQL_BIT) AS PRINTED,' ' as 'Print' ,BOL.order_no,BOL.order_line,BOL.part,part_desc,locn,BOL.Heat,BOL.bin,Qty, SHPHDR.Customer_PO,BOL.lot,ITMHIS.Job,ITMHIS.Suffix,SHPTO.Name_Customer_Ship,SHPHDR.Date_shipped,BOL.pck_no, INVMST.Um_Inventory from ")
+
+f.Intrinsic.String.Build(" {0} V_BOL_PACK_DTL BOL left join GCG_4318_Staginglbls GCG on BOL.pck_no = GCG.pck_no and BOL.order_no = GCG.order_no and BOL.order_line  = GCG.order_line ",V.Local.sSql,V.Local.sSql)
+
+'added by Josh W 2017-02-14 - joined INVENTORY_MSTR for the UM_INVENTORY field
+f.Intrinsic.String.Build(" {0} left join v_Inventory_Mstr INVMST on BOL.Part=INVMST.Part and BOL.Locn=INVMST.Location ",V.Local.sSql,V.Local.sSql)
+
+f.Intrinsic.String.Build(" {0} left join v_Shipment_Header SHPHDR on SHPHDR.order_no = BOL.order_no and SHPHDR.order_suffix = BOL.order_seq ",V.Local.sSql,V.Local.sSql)
+f.Intrinsic.String.Build(" {0} left join v_Shipment_ShipTo SHPTO on SHPHDR.order_no = SHPTO.order_no and SHPHDR.order_suffix = SHPTO.order_suffix and SHPHDR.Ship_ID = SHPTO.Ship_ID ",V.Local.sSql,V.Local.sSql)
+f.Intrinsic.String.Build(" {0} left join v_Item_History ITMHIS on BOL.Part = ITMHIS.Part and BOL.Lot = ITMHIS.Lot and BOL.Bin = ITMHIS.Bin and BOL.Heat = ITMHIS.Heat and ITMHIS.SEQUENCE<>'000000' where BOL.pck_no = '{1}'",V.Local.sSql,V.Local.sPKLno,V.Local.sSql)
+
+'create datatable
+'show grid
+
+F.Data.DataTable.CreateFromSQL("DTBOL","con",V.Local.sSQL,True)
+
+'create the dataview
+f.data.dataview.create("DTBOL","DVBOL")
+gui.PrintLabels.GsGridControl_Lbls.AddGridViewFromDataView("DVBOL","DTBOL","DVBOL")
+
+
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","pck_no","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Customer_PO","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Job","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Suffix","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Name_Customer_Ship","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Date_shipped","Visible",False)
+
+'modified by Josh Withrow 2017-02-14 - commented Heat, replaced with Lot
+'gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Heat","Visible",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Lot","Visible",False)
+
+'modified by Josh Withrow 2017-02-14 - added UM_INVENTORY to DVBOL
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","UM_Inventory","Visible",False)
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Select","Caption","Select")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Select","MaxWidth","40")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Select","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Select","AllowEdit",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Select","ReadOnly",False)
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Printed","Caption","Printed")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Printed","MaxWidth","50")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Printed","visible",True)
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Print","Caption","Print Qty")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Print","MaxWidth","50")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Print","visible",True)
+'Gui.F_Job.GsGridControl1.SetColumnProperty("GridInkBasic","Ribbon_Len","DisplayFormatType","Numeric")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Print","DisplayFormatType","numeric")
+'gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Print","DisplayFormatType","a")
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Print","AllowEdit",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Print","ReadOnly",False)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Print","CellBackColor","LightYellow")
+
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_no","Caption","Order No")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_no","MaxWidth","60")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_no","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","order_no","AllowEdit",False)
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_line","Caption","Order Line")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_line","MaxWidth","60")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","order_line","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","order_line","AllowEdit",False)
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part","Caption","Part")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part","MaxWidth","140")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","part","AllowEdit",False)
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part_desc","Caption","Part Desc")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part_desc","MaxWidth","160")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","part_desc","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","part_desc","AllowEdit",False)
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","locn","Caption","Locn")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","locn","MaxWidth","60")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","locn","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","locn","AllowEdit",False)
+
+'updated by Josh Withrow 2017-02-14
+'I replaced LOT with HEAT in the grid, but not the label itself because they call GSS HEAT "Lot", and GSS LOT they call "Wire ID".  Weird, I know...
+'end update
+'gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","lot","Caption","Lot")
+'gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","lot","MaxWidth","60")
+'gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","lot","visible",True)
+'gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","lot","AllowEdit",False)
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","heat","Caption","Lot/MCH#")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","heat","MaxWidth","80")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","heat","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","heat","AllowEdit",False)
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","bin","Caption","Bin")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","bin","MaxWidth","60")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","bin","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","bin","AllowEdit",False)
+
+
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Qty","Caption","Qty")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Qty","MaxWidth","60")
+gui.PrintLabels.GsGridControl_Lbls.setcolumnproperty("DVBOL","Qty","visible",True)
+gui.PrintLabels.GsGridControl_Lbls.SetColumnProperty("DVBOL","Qty","AllowEdit",False)
+
+
+
+'gui.PrintLabels.GsGridControl_Lbls.setGridviewProperty("DVBOL","Editable",False)
+gui.PrintLabels.GsGridControl_Lbls.mainview("DVBOL")
+
+
+gui.PrintLabels..Show 
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("PrintLbls_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4318_StagingLabels.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Show_PrintScreen.End
+
+Program.Sub.PrintLabels_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("Show_PrintScreen_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+Function.Data.DataView.Close("DTBOL", "DVBOL")
+F.Data.DataTable.Close("DTBOL")
+
+F.ODBC.Connection!con.Close
+Function.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Show_PrintScreen_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4318_StagingLabels.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.PrintLabels_UnLoad.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_4318_StagingLabels.g2u$}$RAN$}$1/30/2017 10:16:41 AM$}$False
+Program.Sub.Comments.End
